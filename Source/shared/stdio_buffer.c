@@ -4,6 +4,9 @@
 #include "stdio_buffer.h"
 #include "dmalloc.h"
 #include "string_util.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 /* ------------------ OutputFileBuffer ------------------------ */
 
@@ -222,7 +225,13 @@ void ReadBufferi(readbufferdata *readbufferi){
     return;
   }
   fseek(stream, readbufferi->start, SEEK_SET);
+#ifdef SMV_TRACY
+  SMVZONE("io/read");
+#endif
   fread(readbufferi->buffer+readbufferi->start, sizeof(char), readbufferi->size, stream);
+#ifdef SMV_TRACY
+  SMVZONE_END();
+#endif
   fclose(stream);
   readbufferi->returnval = 1;
 }

@@ -14,6 +14,9 @@
 #include "getdata.h"
 #include "string_util.h"
 #include "file_util.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 #include <ctype.h>
 #include <errno.h>
 #ifdef __STDC_VERSION__
@@ -32,6 +35,22 @@ _Static_assert(sizeof(float) == 4, "getdata.c assumes that float is 4 bytes");
 #endif
 #endif
 
+#ifdef SMV_TRACY
+static int FortreadBody(void *ptr, size_t size, size_t count, FILE *file);
+
+/* ------------------ fortread (SMV_TRACY) ------------------------ */
+
+// One Fortran record: header, payload and trailer reads
+int fortread(void *ptr, size_t size, size_t count, FILE *file){
+  int return_code;
+
+  SMVZONE("io/read");
+  return_code = FortreadBody(ptr, size, count, file);
+  SMVZONE_END();
+  return return_code;
+}
+#define fortread FortreadBody
+#endif
 /* ------------------ fortread ------------------------ */
 
 int fortread(void *ptr, size_t size, size_t count, FILE *file){
@@ -67,6 +86,9 @@ int fortread(void *ptr, size_t size, size_t count, FILE *file){
   assert(trailer == (size * count));
   return 0;
 }
+#ifdef SMV_TRACY
+#undef fortread
+#endif
 
 /* ------------------ fortwrite ------------------------ */
 
@@ -774,6 +796,22 @@ void writeslicedata(const char *slicefilename, int is1, int is2, int js1,
   return;
 }
 
+#ifdef SMV_TRACY
+static void GetSliceFrameBody(FILE *file, int is1, int is2, int js1, int js2, int ks1,
+                              int ks2, float *time, float *qframe, int testslice,
+                              int *error);
+
+/* ------------------ getsliceframe (SMV_TRACY) ------------------------ */
+
+void getsliceframe(FILE *file, int is1, int is2, int js1, int js2, int ks1,
+                   int ks2, float *time, float *qframe, int testslice,
+                   int *error){
+  SMVZONE("slice/frame");
+  GetSliceFrameBody(file, is1, is2, js1, js2, ks1, ks2, time, qframe, testslice, error);
+  SMVZONE_END();
+}
+#define getsliceframe GetSliceFrameBody
+#endif
 /* ------------------ getsliceframe ------------------------ */
 
 void getsliceframe(FILE *file, int is1, int is2, int js1, int js2, int ks1,
@@ -811,6 +849,9 @@ void getsliceframe(FILE *file, int is1, int is2, int js1, int js2, int ks1,
   }
   return;
 }
+#ifdef SMV_TRACY
+#undef getsliceframe
+#endif
 
 /* ------------------ outsliceheader ------------------------ */
 

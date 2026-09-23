@@ -52,6 +52,18 @@ option(VENDORED_LIBS "Use the vendored libs" ON)
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 option(UNICODE "Enable Unicode on Windows" ON)
 option(DISPLAY_TESTS "Enable tests which require a display to run" OFF)
+option(SMV_TRACY "Tracy zones matching smokeshow's smvio (Source/shared/smv_tracy.h)" OFF)
+if (SMV_TRACY)
+    # Same client version as smokeshow, so one capture tool reads both
+    set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
+    # Off: CLI runs end before a profiler connects; TRACY_NO_EXIT=1 holds the data
+    set(TRACY_ON_DEMAND OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(tracy
+        GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+        GIT_TAG        v0.11.1
+        GIT_SHALLOW    TRUE)
+    FetchContent_MakeAvailable(tracy)
+endif()
 
 # Ensure all files are in the right place to run the tests
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
