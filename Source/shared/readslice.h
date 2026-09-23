@@ -34,7 +34,12 @@
 #define FSEEK_SLICE(a,b,c)       fseeko(a,b,c)
 #define FTELL_SLICE(a)           ftello(a)
 #endif
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#define FREAD_SLICE(a,b,c,d)     SmvTracyFread(a,b,c,d)
+#else
 #define FREAD_SLICE(a,b,c,d)     fread(a,b,c,d)
+#endif
 #define FCLOSE_SLICE(a)          fclose(a)
 
 #define FORT_SLICEREAD(var,count,STREAM) \

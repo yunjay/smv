@@ -10,6 +10,9 @@
 #include "datadefs.h"
 #include "readslice.h"
 #include "getdata.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 /* ------------------ GetSliceFileHeader ------------------------ */
 
@@ -38,6 +41,23 @@ void GetSliceFileHeader(char *file, int *ip1, int *ip2, int *jp1, int *jp2, int 
   fclose(stream);
 }
 
+#ifdef SMV_TRACY
+static void GetSliceSizesBody(const char *slicefilenameptr, int time_frame, int *nsliceiptr, int *nslicejptr, int *nslicekptr, int *ntimesptr, int tload_step_arg,
+  int *errorptr, int settmin_s_arg, int settmax_s_arg, float tmin_s_arg, float tmax_s_arg, int *headersizeptr, int *framesizeptr);
+
+/* ------------------ GetSliceSizes (SMV_TRACY) ------------------------ */
+
+// Opens a slice dataset: header plus a walk over every frame time, smv's frame index.
+void GetSliceSizes(const char *slicefilenameptr, int time_frame, int *nsliceiptr, int *nslicejptr, int *nslicekptr, int *ntimesptr, int tload_step_arg,
+  int *errorptr, int settmin_s_arg, int settmax_s_arg, float tmin_s_arg, float tmax_s_arg, int *headersizeptr, int *framesizeptr){
+  SMVPLOT_RSS();
+  SMVZONE("slice/index");
+  GetSliceSizesBody(slicefilenameptr, time_frame, nsliceiptr, nslicejptr, nslicekptr, ntimesptr, tload_step_arg,
+    errorptr, settmin_s_arg, settmax_s_arg, tmin_s_arg, tmax_s_arg, headersizeptr, framesizeptr);
+  SMVZONE_END();
+}
+#define GetSliceSizes GetSliceSizesBody
+#endif
 /* ------------------ GetSliceSizes ------------------------ */
 
 void GetSliceSizes(const char *slicefilenameptr, int time_frame, int *nsliceiptr, int *nslicejptr, int *nslicekptr, int *ntimesptr, int tload_step_arg,
@@ -53,6 +73,9 @@ void GetSliceSizes(const char *slicefilenameptr, int time_frame, int *nsliceiptr
   FILEBUFFER *SLICEFILE=NULL;
   int ijk[6];
   int returncode=0;
+#ifdef SMV_TRACY
+  SMVZONE_CTX smv_header_zone;
+#endif
 
   *errorptr = 0;
   *ntimesptr = 0;
@@ -65,6 +88,9 @@ void GetSliceSizes(const char *slicefilenameptr, int time_frame, int *nsliceiptr
     return;
   }
 
+#ifdef SMV_TRACY
+  SMVZONE_OPEN(smv_header_zone, "slice/header");
+#endif
   *headersizeptr = 3*(4+30+4);
   FSEEK_SLICE(SLICEFILE, *headersizeptr, SEEK_CUR);
 
@@ -76,6 +102,9 @@ void GetSliceSizes(const char *slicefilenameptr, int time_frame, int *nsliceiptr
   kp1 = ijk[4];
   kp2 = ijk[5];
   *headersizeptr += 4+6*4+4;
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_header_zone);
+#endif
 
   nxsp = ip2 + 1 - ip1;
   nysp = jp2 + 1 - jp1;
@@ -126,6 +155,9 @@ void GetSliceSizes(const char *slicefilenameptr, int time_frame, int *nsliceiptr
   *errorptr = 0;
   FCLOSE_SLICE(SLICEFILE);
 }
+#ifdef SMV_TRACY
+#undef GetSliceSizes
+#endif
 
 /* ------------------ GetSliceData ------------------------ */
 
@@ -152,6 +184,9 @@ FILE_SIZE GetSliceData(slicedata *sd, const char *slicefilename, int time_frame,
   float *qq;
   int nx, ny, nxy;
   int count_timeframe;
+#ifdef SMV_TRACY
+  SMVZONE_CTX smv_header_zone, smv_frame_zone = {0};
+#endif
 
   joff = 0;
   koff = 0;
@@ -166,10 +201,16 @@ FILE_SIZE GetSliceData(slicedata *sd, const char *slicefilename, int time_frame,
   }
 
   nsteps = 0;
+#ifdef SMV_TRACY
+  SMVZONE_OPEN(smv_header_zone, "slice/header");
+#endif
   FSEEK_SLICE(stream, 3*(4+30+4), SEEK_CUR);
 
   FORT_SLICEREAD(ijk, 6, stream);
   file_size += (FILE_SIZE)(4 + 6*4 + 4);
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_header_zone);
+#endif
   if(returncode==0){
     FCLOSE_SLICE(stream);
     return file_size;
@@ -246,6 +287,9 @@ FILE_SIZE GetSliceData(slicedata *sd, const char *slicefilename, int time_frame,
   count_timeframe = 0;
   for(;;){
     int skipmin;
+#ifdef SMV_TRACY
+    SMVZONE_CLOSE(smv_frame_zone);
+#endif
 
     if(time_frame>=0&&count_timeframe==1){
       break;
@@ -253,6 +297,9 @@ FILE_SIZE GetSliceData(slicedata *sd, const char *slicefilename, int time_frame,
     FORT_SLICEREAD(&timeval, 1, stream);
     file_size += (FILE_SIZE)(4 + 4 + 4);
     if(returncode==0)break;
+#ifdef SMV_TRACY
+    SMVZONE_OPEN(smv_frame_zone, "slice/frame");
+#endif
     if((settmin_s_arg!=0&&timeval<tmin_s_arg)){
       loadframe = 0;
     }
@@ -390,6 +437,9 @@ FILE_SIZE GetSliceData(slicedata *sd, const char *slicefilename, int time_frame,
       }
     }
   }
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_frame_zone);
+#endif
   *ks2ptr += koff;
   *js2ptr += joff;
   *ntimesptr = nsteps;

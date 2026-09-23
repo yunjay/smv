@@ -34,6 +34,9 @@
 #include "readtour.h"
 #include "readsmvfile.h"
 #include "paths.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 #define BREAK break
 #define BREAK2 \
@@ -4866,6 +4869,25 @@ int HaveSmoke3D(bufferstreamdata *stream){
   return 0;
 }
 #endif
+#ifdef SMV_TRACY
+static SMVZONE_CTX smv_pass_zone;
+static int ReadSMV_ParseBody(smv_case *scase, bufferstreamdata *stream);
+
+/* ------------------ ReadSMV_Parse (SMV_TRACY) ------------------------ */
+
+// case/manifest around the whole parse. The body returns from inside passes, so the
+// open pass zone is closed here as well.
+int ReadSMV_Parse(smv_case *scase, bufferstreamdata *stream){
+  int return_code;
+
+  SMVZONE("case/manifest");
+  return_code = ReadSMV_ParseBody(scase, stream);
+  SMVZONE_CLOSE(smv_pass_zone);
+  SMVZONE_END();
+  return return_code;
+}
+#define ReadSMV_Parse ReadSMV_ParseBody
+#endif
 /* ------------------ ReadSMV_Parse ------------------------ */
 
 /// @brief Parse an SMV file into global variables. This should only be called
@@ -4915,6 +4937,9 @@ int ReadSMV_Parse(smv_case *scase, bufferstreamdata *stream){
 
    START_TIMER(timer_readsmv);
    START_TIMER(scase->pass1_time);
+#ifdef SMV_TRACY
+  SMVZONE_OPEN(smv_pass_zone, "case/manifest/pass");
+#endif
 
   nvents=0;
   igrid=0;
@@ -5421,6 +5446,9 @@ int ReadSMV_Parse(smv_case *scase, bufferstreamdata *stream){
 
   }
   STOP_TIMER(scase->pass1_time);
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_pass_zone);
+#endif
 
 /*
    ************************************************************************
@@ -5429,6 +5457,9 @@ int ReadSMV_Parse(smv_case *scase, bufferstreamdata *stream){
  */
 
   START_TIMER(scase->pass2_time);
+#ifdef SMV_TRACY
+  SMVZONE_OPEN(smv_pass_zone, "case/manifest/pass");
+#endif
 
  if(scase->fds_version==NULL){
    NewMemory((void **)&scase->fds_version,7+1);
@@ -6900,6 +6931,9 @@ int ReadSMV_Parse(smv_case *scase, bufferstreamdata *stream){
   }
 
   STOP_TIMER(scase->pass2_time);
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_pass_zone);
+#endif
 
 /*
    ************************************************************************
@@ -6908,6 +6942,9 @@ int ReadSMV_Parse(smv_case *scase, bufferstreamdata *stream){
  */
 
   START_TIMER(scase->pass3_time);
+#ifdef SMV_TRACY
+  SMVZONE_OPEN(smv_pass_zone, "case/manifest/pass");
+#endif
 
   CheckMemory;
   ParseSurfs(scase, NULL);
@@ -7092,6 +7129,9 @@ int ReadSMV_Parse(smv_case *scase, bufferstreamdata *stream){
   }
 
   STOP_TIMER(scase->pass3_time);
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_pass_zone);
+#endif
 
   /*
    ************************************************************************
@@ -7100,6 +7140,9 @@ int ReadSMV_Parse(smv_case *scase, bufferstreamdata *stream){
  */
 
   START_TIMER(scase->pass4_time);
+#ifdef SMV_TRACY
+  SMVZONE_OPEN(smv_pass_zone, "case/manifest/pass");
+#endif
 
   // look for DEVICE entries in "experimental" spread sheet files
 
@@ -8717,6 +8760,9 @@ typedef struct {
   }
 
   STOP_TIMER(scase->pass4_time);
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_pass_zone);
+#endif
 
 /*
    ************************************************************************
@@ -8725,6 +8771,9 @@ typedef struct {
  */
 
   START_TIMER(scase->pass5_time);
+#ifdef SMV_TRACY
+  SMVZONE_OPEN(smv_pass_zone, "case/manifest/pass");
+#endif
 
   if(scase->auto_terrain==1&&scase->manual_terrain==0){
     scase->nOBST=0;
@@ -8867,6 +8916,9 @@ typedef struct {
   }
   PRINT_TIMER(timer_readsmv, "pass 5");
   PrintMemoryInfo;
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_pass_zone);
+#endif
   if(do_pass5==1){
     STOP_TIMER(scase->pass5_time);
   }
@@ -8876,6 +8928,9 @@ typedef struct {
   scase->clip_I=ibartemp; scase->clip_J=jbartemp; scase->clip_K=kbartemp;
   return 0;
 }
+#ifdef SMV_TRACY
+#undef ReadSMV_Parse
+#endif
 
 /* ------------------ InitScase ------------------------ */
 
