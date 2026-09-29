@@ -10,6 +10,9 @@
 
 #include "smokeviewvars.h"
 #include "interp.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 /* ------------------ CompareFloats ------------------------ */
 
@@ -1277,8 +1280,16 @@ void SetHiddenBlockages(meshdata *meshi){
 
 void *MakeIBlank(void *arg){
   int ig;
+#ifdef SMV_TRACY
+  // Closed before each THREAD_EXIT: pthread_exit never returns to a wrapper
+  SMVZONE_CTX smv_iblank_zone;
+  SMVZONE_OPEN(smv_iblank_zone, "mesh/iblank");
+#endif
 
   if(global_scase.use_iblank==0){
+#ifdef SMV_TRACY
+    SMVZONE_CLOSE(smv_iblank_zone);
+#endif
     THREAD_EXIT(makeiblank_threads);
   }
   for(ig=0; ig<global_scase.meshescoll.nmeshes; ig++){
@@ -1305,6 +1316,9 @@ void *MakeIBlank(void *arg){
       NewMemory((void **)&c_iblank_x,         ijksize*sizeof(char))==0         ||
       NewMemory((void **)&c_iblank_y,         ijksize*sizeof(char))==0         ||
       NewMemory((void **)&c_iblank_z,         ijksize*sizeof(char))==0){
+#ifdef SMV_TRACY
+      SMVZONE_CLOSE(smv_iblank_zone);
+#endif
       THREAD_EXIT(makeiblank_threads);
     }
 
@@ -1490,6 +1504,9 @@ void *MakeIBlank(void *arg){
   }
 
   update_make_iblank = 1;
+#ifdef SMV_TRACY
+  SMVZONE_CLOSE(smv_iblank_zone);
+#endif
   THREAD_EXIT(makeiblank_threads);
 }
 

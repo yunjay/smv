@@ -14,6 +14,9 @@
 #include "colorbars.h"
 #include "readtour.h"
 #include "readsmoke.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 #define CONV(p,pl,pr,pxl,pxr) ( (pxl) + ((pxr)-(pxl))*((p)-(pl))/((pr)-(pl)) )
 #define TIMEBAR_HEIGHT 20
@@ -1571,7 +1574,13 @@ void GetSmokeDir(float *mm){
           use_soot_density = 1;
           maxval = soot->maxvals[soot->ismoke3d_time];
         }
+#ifdef SMV_TRACY
+        SMVZONE("smoke3d/alphas");
+#endif
         InitAlphas(soot->alphas_smokedir[minalphadir], soot->alphas_firedir[minalphadir], soot->extinct, use_soot_density, maxval, glui_mass_extinct, meshj->dxyz_fds[0], smoke_dist);
+#ifdef SMV_TRACY
+        SMVZONE_END();
+#endif
       }
       if(demo_mode != 0){
         meshj->smokedir = 1;
@@ -2212,8 +2221,14 @@ void ViewportScene(int quad, int view_mode, GLint screen_left, GLint screen_down
     }
     if(global_scase.smoke3dcoll.nsmoke3dinfo>0&&show3dsmoke==1){
       INIT_PRINT_TIMER(timer_sort_smokemeshes);
+#ifdef SMV_TRACY
+      SMVZONE("smoke3d/axis");
+#endif
       SortSmoke3dinfo();
       GetSmokeDir(modelview_scratch);
+#ifdef SMV_TRACY
+      SMVZONE_END();
+#endif
       PRINT_TIMER(timer_sort_smokemeshes,"SortSmoke3dinfo+GetSmokeDir");
       SNIFF_ERRORS("after GetSmokeDir");
     }

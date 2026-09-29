@@ -18,6 +18,9 @@
 #include "glui_bounds.h"
 
 #include "readslice.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 void DrawQuadSlice(float *v1, float *v2, float *v3, float *v4, float t1, float t2, float t3, float t4, float del, int level);
 void DrawQuadVectorSlice(float *v1, float *v2, float *v3, float *v4, float del, int level);
@@ -3695,6 +3698,10 @@ FILE_SIZE ReadSlice(const char *file, int ifile, int time_frame, float *time_val
     int set_valmin, set_valmax;
 
     update_slice2device = 1;
+#ifdef SMV_TRACY
+    SMVZONE_CTX smv_bounds_zone;
+    SMVZONE_OPEN(smv_bounds_zone, "slice/bounds");
+#endif
     if(runscript == 0){
       ThreadJoin(&slicebound_threads);
     }
@@ -3784,6 +3791,9 @@ FILE_SIZE ReadSlice(const char *file, int ifile, int time_frame, float *time_val
         MakeColorLabels(sb->colorlabels, sb->colorvalues, qmin, qmax, global_scase.nrgb);
       }
     }
+#ifdef SMV_TRACY
+    SMVZONE_CLOSE(smv_bounds_zone);
+#endif
     if(sd->compression_type == COMPRESSED_ZLIB){
       int ii;
 
@@ -4021,6 +4031,9 @@ void DrawGSliceDataGpu(slicedata *slicei){
 /* ------------------ DrawVolSliceCellFaceCenter ------------------------ */
 
 void DrawVolSliceCellFaceCenter(const slicedata *sd, int is1, int is2, int js1, int js2, int ks1, int ks2, int slicedir){
+#ifdef SMV_TRACY
+  SMVZONE("slice/draw/cell");
+#endif
   float *xplt_smv, *yplt_smv, *zplt_smv;
   int plotx, ploty, plotz;
   int ibar, jbar;
@@ -4264,6 +4277,9 @@ void DrawVolSliceCellFaceCenter(const slicedata *sd, int is1, int is2, int js1, 
   }
   if(use_transparency_data == 1)TransparentOff();
   if(cullfaces == 1)glEnable(GL_CULL_FACE);
+#ifdef SMV_TRACY
+  SMVZONE_END();
+#endif
 }
 
 /* ------------------ DrawVolSliceValues ------------------------ */
@@ -4977,6 +4993,19 @@ void DrawVolAllSlicesTextureDiag(const slicedata *sd, int direction){
   if(cullfaces == 1)glEnable(GL_CULL_FACE);
 }
 
+#ifdef SMV_TRACY
+static void DrawVolSliceTextureBody(const slicedata *sd, int is1, int is2, int js1, int js2, int ks1, int ks2, int slicedir);
+
+/* ------------------ DrawVolSliceTexture (SMV_TRACY) ------------------------ */
+
+// One node-centred slice piece of one mesh
+void DrawVolSliceTexture(const slicedata *sd, int is1, int is2, int js1, int js2, int ks1, int ks2, int slicedir){
+  SMVZONE("slice/draw/node");
+  DrawVolSliceTextureBody(sd, is1, is2, js1, js2, ks1, ks2, slicedir);
+  SMVZONE_END();
+}
+#define DrawVolSliceTexture DrawVolSliceTextureBody
+#endif
 /* ------------------ DrawVolSliceTexture ------------------------ */
 
 void DrawVolSliceTexture(const slicedata *sd, int is1, int is2, int js1, int js2, int ks1, int ks2, int slicedir){
@@ -5305,6 +5334,9 @@ void DrawVolSliceTexture(const slicedata *sd, int is1, int is2, int js1, int js2
   if(use_transparency_data == 1)TransparentOff();
   if(cullfaces == 1)glEnable(GL_CULL_FACE);
 }
+#ifdef SMV_TRACY
+#undef DrawVolSliceTexture
+#endif
 
 /* ------------------ DrawVolSliceLines ------------------------ */
 
@@ -6549,6 +6581,19 @@ int SetupSlice(slicedata *sd){
   return 1;
 }
 
+#ifdef SMV_TRACY
+static void DrawSliceFrameBody();
+
+/* ------------------ DrawSliceFrame (SMV_TRACY) ------------------------ */
+
+// Every loaded slice drawn for one frame
+void DrawSliceFrame(){
+  SMVZONE("slice/draw");
+  DrawSliceFrameBody();
+  SMVZONE_END();
+}
+#define DrawSliceFrame DrawSliceFrameBody
+#endif
 /* ------------------ DrawSliceFrame ------------------------ */
 
 void DrawSliceFrame(){
@@ -6802,6 +6847,9 @@ void DrawSliceFrame(){
     }
   }
 }
+#ifdef SMV_TRACY
+#undef DrawSliceFrame
+#endif
 
 /* ------------------ DrawVVolSliceCellCenter ------------------------ */
 
@@ -8637,6 +8685,19 @@ int CompareSortSlices(const void *arg1, const void *arg2){
   return 0;
 }
 
+#ifdef SMV_TRACY
+static void SortSlicesBody(void);
+
+/* ------------------ SortSlices (SMV_TRACY) ------------------------ */
+
+// Multi-mesh slice pieces sorted back to front
+void SortSlices(void){
+  SMVZONE("slice/sort");
+  SortSlicesBody();
+  SMVZONE_END();
+}
+#define SortSlices SortSlicesBody
+#endif
 /* ------------------ SortSlices ------------------------ */
 
 void SortSlices(void){
@@ -8832,6 +8893,9 @@ void SortSlices(void){
     qsort((splitslicedata **)splitsliceinfoptr, ( size_t )nsplitsliceinfo, sizeof(splitslicedata *), CompareSortSlices);
   }
 }
+#ifdef SMV_TRACY
+#undef SortSlices
+#endif
 
 /* ------------------ DrawSortSlices ------------------------ */
 
