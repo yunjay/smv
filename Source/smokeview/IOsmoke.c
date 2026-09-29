@@ -19,6 +19,12 @@
 #ifdef SMV_TRACY
 #include "smv_tracy.h"
 #endif
+#ifdef SMV_DUMP
+#include "smv_dump.h"
+// Forwarding wrappers that record the vertex stream of a dumped draw
+#define glColor4ubv SmvDumpColor4ubv
+#define glVertex3f SmvDumpVertex3f
+#endif
 
 #define SKIP_SMOKE(SMOKE3DFILE) fseek( SMOKE3DFILE, fortran_skip, SEEK_CUR)
 
@@ -860,6 +866,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
       }
     }
     alphaf_ptr = alphaf_out;
+#ifdef SMV_DUMP
+    SmvDumpSmokeMesh(smoke3di, meshi, smokealpha_map, firealpha_map, alphaf_out);
+#endif
 
     // ++++++++++++++++++  draw triangles +++++++++++++++++
 #ifdef SMV_TRACY
@@ -936,6 +945,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
 #ifdef SMV_TRACY
     SMVZONE_CLOSE(smv_emit_zone);
 #endif
+#ifdef SMV_DUMP
+    SmvDumpDrawEnd();
+#endif
 
     break;
 
@@ -961,6 +973,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
       }
     }
     alphaf_ptr = alphaf_out;
+#ifdef SMV_DUMP
+    SmvDumpSmokeMesh(smoke3di, meshi, smokealpha_map, firealpha_map, alphaf_out);
+#endif
 
     // ++++++++++++++++++  draw triangles +++++++++++++++++
 
@@ -1033,6 +1048,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
 #ifdef SMV_TRACY
     SMVZONE_CLOSE(smv_emit_zone);
 #endif
+#ifdef SMV_DUMP
+    SmvDumpDrawEnd();
+#endif
     break;
 
     // +++++++++++++++++++++++++++++++++++ DIR 3 +++++++++++++++++++++++++++++++++++++++
@@ -1057,6 +1075,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
       }
     }
     alphaf_ptr = alphaf_out;
+#ifdef SMV_DUMP
+    SmvDumpSmokeMesh(smoke3di, meshi, smokealpha_map, firealpha_map, alphaf_out);
+#endif
 
     // ++++++++++++++++++  draw triangles +++++++++++++++++
 
@@ -1124,6 +1145,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
     glEnd();
 #ifdef SMV_TRACY
     SMVZONE_CLOSE(smv_emit_zone);
+#endif
+#ifdef SMV_DUMP
+    SmvDumpDrawEnd();
 #endif
     break;
   default:

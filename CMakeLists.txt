@@ -53,6 +53,7 @@ option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 option(UNICODE "Enable Unicode on Windows" ON)
 option(DISPLAY_TESTS "Enable tests which require a display to run" OFF)
 option(SMV_TRACY "Tracy zones matching smokeshow's smvio (Source/shared/smv_tracy.h)" OFF)
+option(SMV_DUMP "Render dump for smokeshow's smv2png (Source/smokeview/smv_dump.h)" OFF)
 if (SMV_TRACY)
     # Same client version as smokeshow, so one capture tool reads both
     set(TRACY_ENABLE ON CACHE BOOL "" FORCE)

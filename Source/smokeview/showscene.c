@@ -11,6 +11,9 @@
 #include "smokeviewvars.h"
 #include "viewports.h"
 #include "IOobjects.h"
+#ifdef SMV_DUMP
+#include "smv_dump.h"
+#endif
 
 /* ----------------------- DrawLights ----------------------------- */
 
@@ -619,6 +622,9 @@ void ShowScene2(int mode){
 /* ------------------ ShowScene ------------------------ */
 
 void ShowScene(int mode, int view_mode, int quad, GLint s_left, GLint s_down, screendata *screen){
+#ifdef SMV_DUMP
+  SmvDumpPassBegin();
+#endif
   CheckMemory;
 
   show_mode = mode;

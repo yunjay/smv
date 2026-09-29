@@ -16,6 +16,9 @@
 #include "IOobjects.h"
 #include "readslice.h"
 #include "readsmvfile.h"
+#ifdef SMV_DUMP
+#include "smv_dump.h"
+#endif
 
 static char param_buffer[1024];
 static int param_status, line_number;
@@ -3253,6 +3256,9 @@ void ScriptSetTimeVal(scriptdata *scripti){
     }
   }
   iglobal_times=imin;
+#ifdef SMV_DUMP
+  SmvDumpSetTime(scripti->fval, imin, global_times[imin]);
+#endif
   script_itime=imin;
   stept=0;
   last_time_paused = 1;
