@@ -8,6 +8,9 @@
 #include "smokeviewvars.h"
 #include "glui_bounds.h"
 #include "readsmvfile.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 #define EXPMIN -1
 #define EXPMAX 3
@@ -992,6 +995,9 @@ void UpdateSmokeColormap(void){
 /* ------------------ UpdateRGBColors ------------------------ */
 
 void UpdateRGBColors(int colorbar_index){
+#ifdef SMV_TRACY
+  SMVZONE("colorbar/rgb");
+#endif
 
   int n,nn;
   int i;
@@ -1199,6 +1205,9 @@ void UpdateRGBColors(int colorbar_index){
   UpdateChopColors();
   InitCadColors();
   UpdateTexturebar();
+#ifdef SMV_TRACY
+  SMVZONE_END();
+#endif
 }
 
 /* ------------------ UpdateChopColors ------------------------ */

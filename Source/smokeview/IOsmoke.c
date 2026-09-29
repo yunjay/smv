@@ -16,6 +16,9 @@
 #include "getdata.h"
 #include "readsmoke.h"
 #include "readsmvfile.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 #define SKIP_SMOKE(SMOKE3DFILE) fseek( SMOKE3DFILE, fortran_skip, SEEK_CUR)
 
@@ -665,6 +668,9 @@ void InitAlphas(unsigned char *smokealphanew, unsigned char *firealphanew, float
 /* ------------------ UpdateSmokeAlphas ------------------------ */
 #define NDISTS 3
 void UpdateSmokeAlphas(void){
+#ifdef SMV_TRACY
+  SMVZONE("smoke3d/alphas");
+#endif
   int i;
 
   for(i = 0; i<global_scase.smoke3dcoll.nsmoke3dinfo; i++){
@@ -689,11 +695,33 @@ void UpdateSmokeAlphas(void){
       InitAlphas(smoke3di->alphas_smokedir[j], smoke3di->alphas_firedir[j], smoke3di->extinct, smoke3di->soot_loaded, maxval, glui_mass_extinct, smoke_mesh->dxyz_fds[0], dists[j]);
     }
   }
+#ifdef SMV_TRACY
+  SMVZONE_END();
+#endif
 }
 
+#ifdef SMV_TRACY
+static int DrawSmoke3DBody(smoke3ddata *smoke3di);
+
+/* ------------------ DrawSmoke3D (SMV_TRACY) ------------------------ */
+
+// One mesh's slabs
+int DrawSmoke3D(smoke3ddata *smoke3di){
+  int ntriangles;
+
+  SMVZONE("smoke3d/draw/mesh");
+  ntriangles = DrawSmoke3DBody(smoke3di);
+  SMVZONE_END();
+  return ntriangles;
+}
+#define DrawSmoke3D DrawSmoke3DBody
+#endif
 /* ------------------ DrawSmoke3D ------------------------ */
 
 int DrawSmoke3D(smoke3ddata *smoke3di){
+#ifdef SMV_TRACY
+  SMVZONE_CTX smv_emit_zone;
+#endif
   int i, j, k, n;
   float constval, x1, x3, z1, z3, yy1, y3;
   int is1, is2, js1, js2, ks1, ks2;
@@ -824,6 +852,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
     alphaf_ptr = alphaf_out;
 
     // ++++++++++++++++++  draw triangles +++++++++++++++++
+#ifdef SMV_TRACY
+    SMVZONE_OPEN(smv_emit_zone, "smoke3d/draw/emit");
+#endif
     glBegin(GL_TRIANGLES);
     slice_beg = is1;
     slice_end = is2;
@@ -892,6 +923,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
       }
     }
     glEnd();
+#ifdef SMV_TRACY
+    SMVZONE_CLOSE(smv_emit_zone);
+#endif
 
     break;
 
@@ -920,6 +954,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
 
     // ++++++++++++++++++  draw triangles +++++++++++++++++
 
+#ifdef SMV_TRACY
+    SMVZONE_OPEN(smv_emit_zone, "smoke3d/draw/emit");
+#endif
     glBegin(GL_TRIANGLES);
     slice_beg = js1;
     slice_end = js2;
@@ -983,6 +1020,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
       }
     }
     glEnd();
+#ifdef SMV_TRACY
+    SMVZONE_CLOSE(smv_emit_zone);
+#endif
     break;
 
     // +++++++++++++++++++++++++++++++++++ DIR 3 +++++++++++++++++++++++++++++++++++++++
@@ -1010,6 +1050,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
 
     // ++++++++++++++++++  draw triangles +++++++++++++++++
 
+#ifdef SMV_TRACY
+    SMVZONE_OPEN(smv_emit_zone, "smoke3d/draw/emit");
+#endif
     glBegin(GL_TRIANGLES);
     slice_beg = ks1;
     slice_end = ks2;
@@ -1069,6 +1112,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
       }
     }
     glEnd();
+#ifdef SMV_TRACY
+    SMVZONE_CLOSE(smv_emit_zone);
+#endif
     break;
   default:
     assert(FFALSE);
@@ -1078,6 +1124,9 @@ int DrawSmoke3D(smoke3ddata *smoke3di){
   if(cullfaces==1)glEnable(GL_CULL_FACE);
   return nsmoke_triangles;
 }
+#ifdef SMV_TRACY
+#undef DrawSmoke3D
+#endif
 
 /* ------------------ GetFireMinMax ------------------------ */
 
@@ -1214,6 +1263,19 @@ void DrawSmoke3DColorMap(void){
   glEnd();
 }
 
+#ifdef SMV_TRACY
+static void DrawSmokeFrameBody(void);
+
+/* ------------------ DrawSmokeFrame (SMV_TRACY) ------------------------ */
+
+// Every loaded 3-D smoke file drawn for one frame
+void DrawSmokeFrame(void){
+  SMVZONE("smoke3d/draw");
+  DrawSmokeFrameBody();
+  SMVZONE_END();
+}
+#define DrawSmokeFrame DrawSmokeFrameBody
+#endif
 /* ------------------ DrawSmokeFrame ------------------------ */
 
 void DrawSmokeFrame(void){
@@ -1333,6 +1395,9 @@ void DrawSmokeFrame(void){
   }
   SNIFF_ERRORS("after drawsmoke");
 }
+#ifdef SMV_TRACY
+#undef DrawSmokeFrame
+#endif
 
 /* ------------------ SkipSmokeFrames ------------------------ */
 
@@ -2237,6 +2302,9 @@ void ReadSmoke3DAllMeshes(int iframe, int smoketype, int *errorcode){
 /* ------------------ UncompressSmoke3D ------------------------ */
 
 int UncompressSmoke3D(smoke3ddata *smoke3di){
+#ifdef SMV_TRACY
+  SMVZONE("smoke3d/decode");
+#endif
   int iframe_local;
   int countin;
   uLongf countout;
@@ -2297,6 +2365,9 @@ int UncompressSmoke3D(smoke3ddata *smoke3di){
     }
   }
   //assert(countout==smoke3di->nchars_uncompressed);
+#ifdef SMV_TRACY
+  SMVZONE_END();
+#endif
   return 1;
 }
 
@@ -2656,12 +2727,18 @@ void MergeSmoke3DBlack(smoke3ddata *smoke3di){
 /* ------------------ MergeSmoke3D ------------------------ */
 
 void MergeSmoke3D(smoke3ddata *smoke3dset){
+#ifdef SMV_TRACY
+  SMVZONE("smoke3d/merge");
+#endif
   if(smoke3d_black==1){
     MergeSmoke3DBlack(smoke3dset);
     }
   else{
     MergeSmoke3DColors(smoke3dset);
   }
+#ifdef SMV_TRACY
+  SMVZONE_END();
+#endif
 }
 
 /* ------------------ UncompressSmoke3DAll ------------------------ */

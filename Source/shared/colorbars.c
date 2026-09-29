@@ -14,6 +14,9 @@
 
 #include "file_util.h"
 #include "string_util.h"
+#ifdef SMV_TRACY
+#include "smv_tracy.h"
+#endif
 
 void TrimBack(char *line);
 int STRCMP(const char *s1, const char *s2);
@@ -414,6 +417,9 @@ unsigned char SetAlpha(unsigned char *node_rgb){
 void RemapColorbar(colorbardata *cbi, int show_extreme_mindata,
                    unsigned char rgb_below_min[3], int show_extreme_maxdata,
                    unsigned char rgb_above_max[3]){
+#ifdef SMV_TRACY
+  SMVZONE("colorbar/remap");
+#endif
   int i;
   float *colorbar_rgb;
   unsigned char *node_rgb;
@@ -492,6 +498,9 @@ void RemapColorbar(colorbardata *cbi, int show_extreme_mindata,
   }
   Rgb2Dist(cbi);
   CheckMemory;
+#ifdef SMV_TRACY
+  SMVZONE_END();
+#endif
 }
 
 /* ------------------ ReadCSVColorbar ------------------------ */
@@ -689,6 +698,9 @@ void InitDefaultColorbars(colorbar_collection *colorbars,
                                     int show_extreme_maxdata,
                                     unsigned char rgb_above_max[3],
                                     colorbardata **colorbarcopyinfoptr){
+#ifdef SMV_TRACY
+  SMVZONE("colorbar/init");
+#endif
 
   // Add colorbars as defined in the code.
   CreateColorbarRainbow(NewColorbar(colorbars));
@@ -763,6 +775,9 @@ void InitDefaultColorbars(colorbar_collection *colorbars,
   memcpy(colorbarcopy, colorbars->colorbarinfo,
          colorbars->ncolorbars * sizeof(colorbardata));
   *colorbarcopyinfoptr = colorbarcopy;
+#ifdef SMV_TRACY
+  SMVZONE_END();
+#endif
 }
 
 /* ------------------ GetColorPtr ------------------------ */
