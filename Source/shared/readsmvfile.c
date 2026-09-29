@@ -3412,6 +3412,7 @@ int ParseBNDFProcess(smv_case *scase, bufferstreamdata *stream, char *buffer, in
   patchi->hist_update = 0;
   patchi->filetype_label    = NULL;
   patchi->patchfaceinfo = NULL;
+  patchi->npatches = 0;
   patchi->patch_filetype    = PATCH_STRUCTURED_NODE_CENTER;
   patchi->structured        = YES;
   patchi->boundary          = 1;
