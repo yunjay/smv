@@ -14,6 +14,15 @@
 #define DUMP_NONE  0
 #define DUMP_SMOKE 1
 #define DUMP_SLICE 2
+#define DUMP_FACES 3
+
+// GL state blockage faces are lit with, read after the draw (glGet is not allowed inside glBegin)
+typedef struct {
+  int use_lighting, light_faces, cull, cull_mode, front_face, shade_model, normalize, rescale;
+  int color_material_face, color_material_mode, two_side, local_viewer, light_enabled[2];
+  float light_position[2][4], light_ambient[2][4], light_diffuse[2][4], light_specular[2][4], model_ambient[4];
+  float mat_specular[4], mat_emission[4], mat_shininess;
+} dump_lighting;
 
 typedef struct {
   int mesh, frame, smokedir, nnodes;
@@ -42,6 +51,14 @@ static struct {
   int mode;
   unsigned char color[4];
   float t;
+  unsigned int prim;
+  float normal[3], rgba[4];
+  unsigned char *faces;
+  size_t nfaces_bytes, capfaces;
+  float *feedback;
+  int nfeedback, capfeedback;
+  int has_lighting;
+  dump_lighting lighting;
 } dump;
 
 static void *Grow(void *p, int *cap, int need, size_t size){
@@ -69,6 +86,9 @@ void SmvDumpPassBegin(void){
   dump.nsmoke = 0;
   dump.nslice = 0;
   dump.ntris_bytes = 0;
+  dump.nfaces_bytes = 0;
+  dump.nfeedback = 0;
+  dump.has_lighting = 0;
   dump.has_camera = 0;
   dump.mode = DUMP_NONE;
 }
@@ -160,6 +180,109 @@ void SmvDumpVertex3f(float x, float y, float z){
   glVertex3f(x, y, z);
 }
 
+void SmvDumpFacesBegin(void){
+  CaptureCamera();
+  dump.mode = DUMP_FACES;
+}
+
+static void GetLight(int i, GLenum light){
+  dump_lighting *l = &dump.lighting;
+
+  l->light_enabled[i] = glIsEnabled(light);
+  glGetLightfv(light, GL_POSITION, l->light_position[i]);
+  glGetLightfv(light, GL_AMBIENT, l->light_ambient[i]);
+  glGetLightfv(light, GL_DIFFUSE, l->light_diffuse[i]);
+  glGetLightfv(light, GL_SPECULAR, l->light_specular[i]);
+}
+
+void SmvDumpFacesEnd(void){
+  dump_lighting *l = &dump.lighting;
+  GLint v;
+
+  dump.mode = DUMP_NONE;
+  if(dump.has_lighting) return;
+  dump.has_lighting = 1;
+  l->use_lighting = use_lighting;
+  l->light_faces = light_faces;
+  l->cull = glIsEnabled(GL_CULL_FACE);
+  glGetIntegerv(GL_CULL_FACE_MODE, &v); l->cull_mode = v;
+  glGetIntegerv(GL_FRONT_FACE, &v); l->front_face = v;
+  glGetIntegerv(GL_SHADE_MODEL, &v); l->shade_model = v;
+  l->normalize = glIsEnabled(GL_NORMALIZE);
+  l->rescale = glIsEnabled(GL_RESCALE_NORMAL);
+  glGetIntegerv(GL_COLOR_MATERIAL_FACE, &v); l->color_material_face = v;
+  glGetIntegerv(GL_COLOR_MATERIAL_PARAMETER, &v); l->color_material_mode = v;
+  glGetIntegerv(GL_LIGHT_MODEL_TWO_SIDE, &v); l->two_side = v;
+  glGetIntegerv(GL_LIGHT_MODEL_LOCAL_VIEWER, &v); l->local_viewer = v;
+  glGetFloatv(GL_LIGHT_MODEL_AMBIENT, l->model_ambient);
+  GetLight(0, GL_LIGHT0);
+  GetLight(1, GL_LIGHT1);
+  glGetMaterialfv(GL_FRONT, GL_SPECULAR, l->mat_specular);
+  glGetMaterialfv(GL_FRONT, GL_EMISSION, l->mat_emission);
+  glGetMaterialfv(GL_FRONT, GL_SHININESS, &l->mat_shininess);
+}
+
+// Draws again into a feedback buffer: GL_3D_COLOR gives each vertex that survives culling and
+// clipping as window x, y, z and its lit RGBA. Nothing is rasterized, so the image is unchanged.
+void SmvDumpFacesFeedback(void (*draw)(int), int option){
+  static GLfloat *buf = NULL;
+  const GLsizei cap = 1 << 22;
+  GLint n;
+
+  if(buf == NULL) buf = malloc((size_t)cap * sizeof(GLfloat));
+  if(buf == NULL) return;
+  glFeedbackBuffer(cap, GL_3D_COLOR, buf);
+  glRenderMode(GL_FEEDBACK);
+  draw(option);
+  n = glRenderMode(GL_RENDER);
+  if(n < 0){
+    fprintf(stderr, "*** SMV_DUMP: feedback buffer overflow\n");
+    return;
+  }
+  dump.feedback = Grow(dump.feedback, &dump.capfeedback, dump.nfeedback + n, sizeof(float));
+  memcpy(dump.feedback + dump.nfeedback, buf, (size_t)n * sizeof(float));
+  dump.nfeedback += n;
+}
+
+void SmvDumpBegin(unsigned int mode){
+  dump.prim = mode;
+  glBegin(mode);
+}
+
+void SmvDumpNormal3fv(const float *n){
+  memcpy(dump.normal, n, 3 * sizeof(float));
+  glNormal3fv(n);
+}
+
+void SmvDumpColor3fv(const float *c){
+  memcpy(dump.rgba, c, 3 * sizeof(float));
+  dump.rgba[3] = 1.0f;
+  glColor3fv(c);
+}
+
+void SmvDumpColor4fv(const float *c){
+  memcpy(dump.rgba, c, 4 * sizeof(float));
+  glColor4fv(c);
+}
+
+// 44 bytes per vertex: x, y, z, normal, RGBA as f32, then the primitive as u32
+void SmvDumpVertex3fv(const float *v){
+  if(dump.mode == DUMP_FACES){
+    unsigned char *r;
+    int cap = (int)dump.capfaces;
+
+    dump.faces = Grow(dump.faces, &cap, (int)(dump.nfaces_bytes + 44), 1);
+    dump.capfaces = (size_t)cap;
+    r = dump.faces + dump.nfaces_bytes;
+    memcpy(r, v, 12);
+    memcpy(r + 12, dump.normal, 12);
+    memcpy(r + 24, dump.rgba, 16);
+    memcpy(r + 40, &dump.prim, 4);
+    dump.nfaces_bytes += 44;
+  }
+  glVertex3fv(v);
+}
+
 static int DumpWriteFile(const char *dir, const char *name, const void *p, size_t n){
   char path[2048];
   FILE *f;
@@ -235,12 +358,43 @@ void SmvDumpFlush(const char *image_file){
     JsonString(f, d->file);
     fprintf(f, ", \"frame\": %i, \"valmin\": %.9g, \"valmax\": %.9g}", d->frame, d->valmin, d->valmax);
   }
-  fprintf(f, "%s],\n  \"tris_vertices\": %i\n}\n", dump.nslice ? "\n  " : "", (int)(dump.ntris_bytes / 16));
+  fprintf(f, "%s],\n  \"tris_vertices\": %i,\n", dump.nslice ? "\n  " : "", (int)(dump.ntris_bytes / 16));
+  fprintf(f, "  \"obst_vertices\": %i,\n  \"obst_feedback_values\": %i", (int)(dump.nfaces_bytes / 44), dump.nfeedback);
+  if(dump.has_lighting){
+    const dump_lighting *l = &dump.lighting;
+
+    fprintf(f, ",\n  \"lighting\": {\"use_lighting\": %i, \"light_faces\": %i, \"cull\": %i, \"cull_mode\": %i, "
+            "\"front_face\": %i, \"shade_model\": %i, \"normalize\": %i, \"rescale_normal\": %i, "
+            "\"color_material_face\": %i, \"color_material_mode\": %i, \"two_side\": %i, \"local_viewer\": %i,\n",
+            l->use_lighting, l->light_faces, l->cull, l->cull_mode, l->front_face, l->shade_model, l->normalize, l->rescale,
+            l->color_material_face, l->color_material_mode, l->two_side, l->local_viewer);
+    fprintf(f, "    \"model_ambient\": ");
+    JsonFloats(f, l->model_ambient, 4);
+    for(i = 0; i < 2; i++){
+      fprintf(f, ",\n    \"light%i\": {\"enabled\": %i, \"position\": ", i, l->light_enabled[i]);
+      JsonFloats(f, l->light_position[i], 4);
+      fprintf(f, ", \"ambient\": ");
+      JsonFloats(f, l->light_ambient[i], 4);
+      fprintf(f, ", \"diffuse\": ");
+      JsonFloats(f, l->light_diffuse[i], 4);
+      fprintf(f, ", \"specular\": ");
+      JsonFloats(f, l->light_specular[i], 4);
+      fprintf(f, "}");
+    }
+    fprintf(f, ",\n    \"material_specular\": ");
+    JsonFloats(f, l->mat_specular, 4);
+    fprintf(f, ", \"material_emission\": ");
+    JsonFloats(f, l->mat_emission, 4);
+    fprintf(f, ", \"material_shininess\": %.9g}", l->mat_shininess);
+  }
+  fprintf(f, "\n}\n");
   fclose(f);
 
   DumpWriteFile(dir, "rgb_slice.f32", rgb_slice, sizeof(rgb_slice));
   DumpWriteFile(dir, "smoke_cmap.f32", rgb_slicesmokecolormap_01, sizeof(rgb_slicesmokecolormap_01));
   DumpWriteFile(dir, "tris.bin", dump.tris, dump.ntris_bytes);
+  DumpWriteFile(dir, "obst.bin", dump.faces, dump.nfaces_bytes);
+  DumpWriteFile(dir, "obst_feedback.f32", dump.feedback, (size_t)dump.nfeedback * sizeof(float));
   // A mesh drawn more than once in the pass keeps its last draw
   for(i = 0; i < dump.nsmoke; i++){
     const dump_smoke *d = dump.smoke + i;
@@ -258,7 +412,7 @@ void SmvDumpFlush(const char *image_file){
       DumpWriteFile(dir, name, d->firenode, (size_t)d->nnodes);
     }
   }
-  printf("SMV_DUMP: wrote %s (%i smoke meshes, %i slice pieces, %i vertices)\n", dir, dump.nsmoke, dump.nslice,
-         (int)(dump.ntris_bytes / 16));
+  printf("SMV_DUMP: wrote %s (%i smoke meshes, %i slice pieces, %i vertices, %i face vertices)\n", dir, dump.nsmoke,
+         dump.nslice, (int)(dump.ntris_bytes / 16), (int)(dump.nfaces_bytes / 44));
 }
 #endif

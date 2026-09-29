@@ -23,10 +23,22 @@ void SmvDumpDrawEnd(void);
 // The image of this pass was written: write the dump
 void SmvDumpFlush(const char *image_file);
 
+// Blockage faces (DrawFacesOLD): the vertex stream between Begin and End, then the same draw
+// again in GL feedback mode for the lit, culled vertex colours
+void SmvDumpFacesBegin(void);
+void SmvDumpFacesEnd(void);
+void SmvDumpFacesFeedback(void (*draw)(int), int option);
+
 // Forwarding GL wrappers; they record while a mesh or slice piece is being drawn
 void SmvDumpColor4ubv(const unsigned char *c);
 void SmvDumpTexCoord1f(float t);
 void SmvDumpVertex3f(float x, float y, float z);
+// Forwarding GL wrappers for blockage faces
+void SmvDumpBegin(unsigned int mode);
+void SmvDumpNormal3fv(const float *n);
+void SmvDumpColor3fv(const float *c);
+void SmvDumpColor4fv(const float *c);
+void SmvDumpVertex3fv(const float *v);
 
 #endif
 #endif

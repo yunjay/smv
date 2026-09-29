@@ -12,6 +12,15 @@
 #include "readcad.h"
 #include "readobject.h"
 #include "readsmvfile.h"
+#ifdef SMV_DUMP
+#include "smv_dump.h"
+// Forwarding wrappers that record the vertex stream of the dumped blockage draw
+#define glBegin SmvDumpBegin
+#define glNormal3fv SmvDumpNormal3fv
+#define glColor3fv SmvDumpColor3fv
+#define glColor4fv SmvDumpColor4fv
+#define glVertex3fv SmvDumpVertex3fv
+#endif
 
 #define DRAW_OBSTS_AND_VENTS 0
 #define DRAW_OBSTS           1
@@ -3056,6 +3065,20 @@ void DrawObstsDebug(void){
 
 /* ------------------ DrawFacesOLD ------------------------ */
 
+#ifdef SMV_DUMP
+static void DrawFacesOLDBody(int option);
+
+/* ------------------ DrawFacesOLD (SMV_DUMP) ------------------------ */
+
+// Records the faces as drawn, then their lit colours from a feedback pass
+void DrawFacesOLD(int option){
+  SmvDumpFacesBegin();
+  DrawFacesOLDBody(option);
+  SmvDumpFacesEnd();
+  SmvDumpFacesFeedback(DrawFacesOLDBody, option);
+}
+#define DrawFacesOLD DrawFacesOLDBody
+#endif
 void DrawFacesOLD(int option){
   float *new_color=NULL, *old_color = NULL;
   int **showtimelist_handle, *showtimelist;
@@ -3370,6 +3393,9 @@ void DrawFacesOLD(int option){
   if(show_triangle_count == 1)printf("obst/vent triangles: %i\n", n_geom_triangles);
 }
 
+#ifdef SMV_DUMP
+#undef DrawFacesOLD
+#endif
 /* ------------------ DrawFaces ------------------------ */
 
 void DrawFaces(){
