@@ -58,6 +58,8 @@ if (SMV_TRACY)
     set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
     # Off: CLI runs end before a profiler connects; TRACY_NO_EXIT=1 holds the data
     set(TRACY_ON_DEMAND OFF CACHE BOOL "" FORCE)
+    # Static: the DLL would land outside the runtime directory set below
+    set(TRACY_STATIC ON CACHE BOOL "" FORCE)
     FetchContent_Declare(tracy
         GIT_REPOSITORY https://github.com/wolfpld/tracy.git
         GIT_TAG        v0.11.1
