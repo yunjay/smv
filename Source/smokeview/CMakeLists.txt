@@ -55,6 +55,10 @@ target_sources(smokeview PRIVATE
     glui_objects.cpp
     glui_shooter.cpp
 )
+if (SMV_DUMP)
+    target_sources(smokeview PRIVATE smv_dump.c)
+    target_compile_definitions(smokeview PRIVATE SMV_DUMP)
+endif()
 
 target_link_libraries(smokeview PRIVATE smv)
 # These include directories are an existing workaround that would be good to

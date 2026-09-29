@@ -15,6 +15,9 @@
 #include "IOscript.h"
 #include "paths.h"
 #include "readimage.h"
+#ifdef SMV_DUMP
+#include "smv_dump.h"
+#endif
 
 /* ------------------ PlayMovie ------------------------ */
 
@@ -680,6 +683,9 @@ void RenderFrame(int view_mode){
   if(GetRenderFileName(view_mode, renderfile_dir, renderfile_full)!=0)return;
 
   SmokeviewImage2File(renderfile_dir,renderfile_full,render_filetype,woffset,screenWidth,hoffset,screenH);
+#ifdef SMV_DUMP
+  SmvDumpFlush(renderfile_full);
+#endif
   if(RenderTime==1&&output_slicedata==1){
     OutputSliceData();
   }
@@ -912,6 +918,10 @@ int MergeRenderScreenBuffers(int nfactor, GLubyte **screenbuffers){
     OutputSliceData();
   }
   PRINTF(" Completed\n");
+#ifdef SMV_DUMP
+  // Script renders (RENDERONCE) write here, not through RenderFrame
+  SmvDumpFlush(renderfullfile);
+#endif
   if(current_script_command!=NULL && IS_LOADRENDER){
     char timer_render_label[20];
 

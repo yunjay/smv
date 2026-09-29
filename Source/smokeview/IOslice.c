@@ -21,6 +21,12 @@
 #ifdef SMV_TRACY
 #include "smv_tracy.h"
 #endif
+#ifdef SMV_DUMP
+#include "smv_dump.h"
+// Forwarding wrappers that record the vertex stream of a dumped draw
+#define glTexCoord1f SmvDumpTexCoord1f
+#define glVertex3f SmvDumpVertex3f
+#endif
 
 void DrawQuadSlice(float *v1, float *v2, float *v3, float *v4, float t1, float t2, float t3, float t4, float del, int level);
 void DrawQuadVectorSlice(float *v1, float *v2, float *v3, float *v4, float del, int level);
@@ -5031,6 +5037,9 @@ void DrawVolSliceTexture(const slicedata *sd, int is1, int is2, int js1, int js2
     valmax = 1.0;
   }
   if(sd->slice3d == 1 && visx_all == 0 && visy_all == 0 && visz_all == 0)return;
+#ifdef SMV_DUMP
+  SmvDumpSliceBegin(sd, valmin, valmax);
+#endif
   meshi = global_scase.meshescoll.meshinfo + sd->blocknumber;
 
   xplt_smv = meshi->xplt_smv;
@@ -5333,6 +5342,9 @@ void DrawVolSliceTexture(const slicedata *sd, int is1, int is2, int js1, int js2
   glDisable(GL_TEXTURE_1D);
   if(use_transparency_data == 1)TransparentOff();
   if(cullfaces == 1)glEnable(GL_CULL_FACE);
+#ifdef SMV_DUMP
+  SmvDumpDrawEnd();
+#endif
 }
 #ifdef SMV_TRACY
 #undef DrawVolSliceTexture
