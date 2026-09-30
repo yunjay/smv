@@ -17,7 +17,8 @@ void SmvDumpSetTime(float requested, int iglobal, float global_time);
 // One mesh of 3-D smoke, after ADJUSTALPHA and before its triangles; SmvDumpDrawEnd after glEnd
 void SmvDumpSmokeMesh(const struct _smoke3ddata *s, const struct _meshdata *m, const unsigned char *alpha_map,
                       const unsigned char *fire_map, const unsigned char *alpha_out);
-// One node-centred slice piece, with the bounds its texture coordinates use
+// One slice piece, with the bounds its colours use: DrawVolSliceTexture (node-centred) or
+// DrawVolSliceCellFaceCenter (cell-centred)
 void SmvDumpSliceBegin(const struct _slicedata *sd, float valmin, float valmax);
 void SmvDumpDrawEnd(void);
 // The image of this pass was written: write the dump
@@ -33,6 +34,8 @@ void SmvDumpFacesFeedback(void (*draw)(int), int option);
 void SmvDumpColor4ubv(const unsigned char *c);
 void SmvDumpTexCoord1f(float t);
 void SmvDumpVertex3f(float x, float y, float z);
+// A cell-centred slice colour: records its rgb_slice row in place of the texture coordinate
+void SmvDumpSliceColor4fv(const float *c);
 // Forwarding GL wrappers for blockage faces
 void SmvDumpBegin(unsigned int mode);
 void SmvDumpNormal3fv(const float *n);

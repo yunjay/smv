@@ -161,7 +161,14 @@ void SmvDumpTexCoord1f(float t){
   glTexCoord1f(t);
 }
 
-// 16 bytes per vertex: x, y, z as f32, then RGBA (smoke) or t as f32 (slice)
+// The row of rgb_slice a cell-centred slice draws with, as f32, stands where t is
+void SmvDumpSliceColor4fv(const float *c){
+  if(c >= rgb_slice && c < rgb_slice + 4 * MAXRGB) dump.t = (float)((c - rgb_slice) / 4);
+  glColor4fv(c);
+}
+
+// 16 bytes per vertex: x, y, z as f32, then RGBA (smoke), t (node-centred slice) or the
+// rgb_slice row (cell-centred slice) as f32
 void SmvDumpVertex3f(float x, float y, float z){
   if(dump.mode != DUMP_NONE){
     unsigned char *r;

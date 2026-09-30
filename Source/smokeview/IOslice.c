@@ -26,6 +26,7 @@
 // Forwarding wrappers that record the vertex stream of a dumped draw
 #define glTexCoord1f SmvDumpTexCoord1f
 #define glVertex3f SmvDumpVertex3f
+#define glColor4fv SmvDumpSliceColor4fv
 #endif
 
 void DrawQuadSlice(float *v1, float *v2, float *v3, float *v4, float t1, float t2, float t3, float t4, float del, int level);
@@ -4063,6 +4064,9 @@ void DrawVolSliceCellFaceCenter(const slicedata *sd, int is1, int is2, int js1, 
     valmin = 0.0;
     valmax = 1.0;
   }
+#ifdef SMV_DUMP
+  SmvDumpSliceBegin(sd, valmin, valmax);
+#endif
 
   xplt_smv = meshi->xplt_smv;
   yplt_smv = meshi->yplt_smv;
@@ -4283,6 +4287,9 @@ void DrawVolSliceCellFaceCenter(const slicedata *sd, int is1, int is2, int js1, 
   }
   if(use_transparency_data == 1)TransparentOff();
   if(cullfaces == 1)glEnable(GL_CULL_FACE);
+#ifdef SMV_DUMP
+  SmvDumpDrawEnd();
+#endif
 #ifdef SMV_TRACY
   SMVZONE_END();
 #endif
